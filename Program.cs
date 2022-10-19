@@ -3,6 +3,8 @@ using Microsoft.Graph;
 using Microsoft.Identity.Client;
 using Microsoft.Extensions.Configuration;
 using Helpers;
+using Azure.Identity;
+using Azure.Core;
 
 namespace msgraph
 {
@@ -10,7 +12,7 @@ namespace msgraph
   {
     static void Main(string[] args)
     {
-      Console.WriteLine("MS Graph Tests");
+      Console.WriteLine("-------------------------------MS Graph Tests-------------------------------");
       var config = LoadAppSettings();
       if (config == null)
       {
@@ -18,21 +20,39 @@ namespace msgraph
         return;
       }
 
-      var client = GetAuthenticatedGraphClient(config);
+      Console.WriteLine("---------------OWNER Project informations---------------");
+      var clientUser = GetAuthenticatedGraphClient(config);
 
-      var graphRequest = client.Users.Request();
+      var userRequest = clientUser.Users.Request();
 
-      var results = graphRequest.GetAsync().Result;
-      foreach(var user in results)
+      var userResults = userRequest.GetAsync().Result;
+      var userId = string.Empty;
+
+      foreach(var user in userResults)
       {
-        Console.WriteLine($"{user.Id}: {user.DisplayName} <{user.Mail}>");
+        Console.WriteLine($"{user.Id}: {user.UserPrincipalName} <{user.Mail}>");
+        userId = user.Id;
       }
 
       Console.WriteLine("\nGraph Request");
-      Console.WriteLine(graphRequest.GetHttpRequestMessage().RequestUri);
+      Console.WriteLine(userRequest.GetHttpRequestMessage().RequestUri);
+
+      Console.WriteLine("---------------MAIL Informations---------------");
+      var clientMessage = GetAuthenticatedGraphClient(config);
+      var messageRequest = clientMessage.Users["mariadmin@3330sc.onmicrosoft.com"].MailFolders["Inbox"].Messages.Request();
+      var results = messageRequest.GetAsync().Result;
+
+      foreach (var message in results)
+      {
+        Console.WriteLine($"{message.Subject}: {message.Body} <{message.Sender}>");
+      }
+
+      Console.WriteLine("\nMessage Request");
+      Console.WriteLine(messageRequest.GetHttpRequestMessage().RequestUri);
     }
 
     private static GraphServiceClient? _graphClient;
+    private static GraphServiceClient graphClientTest;
 
     private static IConfigurationRoot? LoadAppSettings()
     {
@@ -65,7 +85,7 @@ namespace msgraph
       var clientSecret = config["applicationSecret"];
       var redirectUri = config["redirectUri"];
       var tenantId = config["tenantId"];
-      var authority = $"https://login.microsoftonline.com/{tenantId}/v2.0";
+      var authority = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token&grant_type=client_credentials&resource=https://graph.microsoft.com";
 
       List<string> scopes = new List<string>();
       scopes.Add("https://graph.microsoft.com/.default");
@@ -85,6 +105,21 @@ namespace msgraph
       _graphClient = new GraphServiceClient(authenticationProvider);
 
       return _graphClient;
+    }
+
+    private static GraphServiceClient GetAuthenticatedGraphClientTest(IConfigurationRoot config)
+    {
+      var scopes = new[] { "https://graph.microsoft.com/.default" };
+      var tenantId = config["tenantId"];
+      var clientId = config["applicationId"];
+      var clientSecret = config["applicationSecret"];
+
+      var clientSecretCredential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+      graphClientTest = new GraphServiceClient(clientSecretCredential, scopes);
+
+      var tokenRequestContext = new TokenRequestContext(scopes);
+      var token = clientSecretCredential.GetTokenAsync(tokenRequestContext).Result.Token;
+      return graphClientTest;
     }
   }
 }

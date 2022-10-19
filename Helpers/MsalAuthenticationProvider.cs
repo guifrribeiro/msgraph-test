@@ -18,7 +18,7 @@ namespace Helpers
     public async Task AuthenticateRequestAsync(HttpRequestMessage request)
     {
       var token = await GetTokenAsync();
-      request.Headers.Authorization = new AuthenticationHeaderValue("bearer", token);
+      request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
     private async Task<string> GetTokenAsync()
