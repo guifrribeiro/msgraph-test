@@ -10,7 +10,7 @@ namespace msgraph
 {
   class Program
   {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
       Console.WriteLine("-------------------------------MS Graph Tests-------------------------------");
       var config = LoadAppSettings();
@@ -42,13 +42,66 @@ namespace msgraph
       var messageRequest = clientMessage.Users["mariadmin@3330sc.onmicrosoft.com"].MailFolders["Inbox"].Messages.Request();
       var results = messageRequest.GetAsync().Result;
 
-      foreach (var message in results)
+      foreach (var msg in results)
       {
-        Console.WriteLine($"{message.Subject}: {message.Body} <{message.Sender}>");
+        Console.WriteLine($"{msg.Subject}: {msg.Body} <{msg.Sender}>");
       }
 
       Console.WriteLine("\nMessage Request");
       Console.WriteLine(messageRequest.GetHttpRequestMessage().RequestUri);
+
+      Console.WriteLine("---------------SEND Mail---------------");
+      var clientSend = GetAuthenticatedGraphClient(config);
+      
+      var message = new Message
+      {
+        Subject = "Teste Microsoft Graph",
+        Body = new ItemBody
+        {
+          ContentType = BodyType.Html,
+          Content = "Esta é apenas uma mensagem simples de testes de uso do pacote Microsoft.Graph para envio de e-mails."
+        },
+        ToRecipients = new List<Recipient>()
+        {
+          new Recipient
+          {
+            EmailAddress = new EmailAddress
+            {
+              Address = "guifrribeiro@outlook.com"
+            }
+          }
+        },
+        InternetMessageHeaders = new List<InternetMessageHeader>()
+        {
+          new InternetMessageHeader
+          {
+            Name = "x-custom-header-group-name",
+            Value = "Nevada"
+          },
+          new InternetMessageHeader
+          {
+            Name = "x-custom-header-group-id",
+            Value = "NV001"
+          }
+        }
+      };
+
+      var saveToSentItems = true;
+      var sendRequest = clientSend.Users["mariadmin@3330sc.onmicrosoft.com"].SendMail(message, saveToSentItems).Request();
+      
+      Console.WriteLine("Sending...");
+      var response = sendRequest.PostResponseAsync().GetAwaiter().GetResult();
+      if (response.StatusCode == System.Net.HttpStatusCode.Accepted)
+      {
+        Console.WriteLine("Mensagem enviada com sucesso");
+      }
+      else
+      {
+        Console.WriteLine("Não foi possível enviar a mensagem");
+      }
+      
+      Console.WriteLine("\nMessage Request");
+      Console.WriteLine(sendRequest.GetHttpRequestMessage().RequestUri);
     }
 
     private static GraphServiceClient? _graphClient;
