@@ -44,7 +44,7 @@ namespace msgraph
 
       foreach (var msg in results)
       {
-        Console.WriteLine($"{msg.Subject}: {msg.Body} <{msg.Sender}>");
+        Console.WriteLine($"Subject: {msg.Subject} \n Body Preview: {msg.BodyPreview} \n Sender: {msg.Sender.EmailAddress.Address}");
       }
 
       Console.WriteLine("\nMessage Request");
